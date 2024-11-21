@@ -6,11 +6,12 @@ const API_KEY = "AIzaSyD6r0wuIFrbEnMT_YS8pLHotyKyJDJzmjM"; // Optional, you may 
 const SHEET_ID = "1mQAE6mQZmgjM-lH2UaINJxExRHD-4dMgFuKSbfIKQ1A"; // Replace with your Google Sheet ID
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets"; // Scope for Sheets API
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authToken, setAuthToken] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Initialize the Google API client
   useEffect(() => {
-    window.gapi.load("client", initClient);
+    window.gapi.load("client:auth2", initClient);
   }, []);
 
   const initClient = () => {
@@ -24,7 +25,18 @@ function App() {
         scope: SCOPE,
       })
       .then(() => {
-        setIsLoaded(true);  // Mark as loaded once the client is initialized
+        // Sign in automatically
+        window.gapi.auth2
+          .getAuthInstance()
+          .signIn()
+          .then((response) => {
+            setAuthToken(response.getAuthResponse().access_token);
+            setIsAuthenticated(true);
+            setIsLoaded(true);
+          })
+          .catch((error) => {
+            console.error("Error signing in", error);
+          });
       })
       .catch((error) => {
         console.error("Error initializing Google API client", error);
@@ -167,31 +179,34 @@ function App() {
     const values = [
       [schoolName, maintenanceTypes.join(", "), `${day}/${month}/${year}`, cost, notes],
     ];
+    const headers = new Headers();
+    headers.append("Authorization", `Bearer ${authToken}`);
 
     window.gapi.client.sheets.spreadsheets.values
-      .append({
-        spreadsheetId: SHEET_ID,
-        range: "Sheet1!A:F",  // Ensure this range matches your Google Sheet layout
-        valueInputOption: "RAW",
-        resource: {
-          values: values,
-        },
-      })
-      .then(() => {
-        alert("Data added to Google Sheets!");
-      })
-      .catch((error) => {
-        console.error("Error appending data:", error);
-        alert("Failed to add data.");
-      });
+    .append({
+      spreadsheetId: SHEET_ID,
+      range: "Sheet1!A:F",
+      valueInputOption: "RAW",
+      resource: {
+        values: values,
+      },
+      headers: headers,
+    })
+    .then(() => {
+      alert("Data added to Google Sheets!");
+    })
+    .catch((error) => {
+      console.error("Error appending data:", error);
+      alert("Failed to add data.");
+    });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      if (!isLoaded) {
-        alert("Google Sheets API is still loading. Please wait.");
+      if (!isLoaded || !isAuthenticated) {
+        alert("Google Sheets API is still loading or not authenticated. Please wait.");
         return;
       }
       appendDataToSheet();
