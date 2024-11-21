@@ -1,9 +1,36 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
-
+const CLIENT_ID =
+  "268057375417-n3bu2koi5v487v0a9vdat4hqh06go7l7.apps.googleusercontent.com"; // Replace with your Client ID
+const API_KEY = "AIzaSyD6r0wuIFrbEnMT_YS8pLHotyKyJDJzmjM"; // Optional, you may need it
+const SHEET_ID = "1mQAE6mQZmgjM-lH2UaINJxExRHD-4dMgFuKSbfIKQ1A"; // Replace with your Google Sheet ID
+const SCOPE = "https://www.googleapis.com/auth/spreadsheets"; // Scope for Sheets API
 function App() {
-  const sheetId = "1mQAE6mQZmgjM-lH2UaINJxExRHD-4dMgFuKSbfIKQ1A";
-  const apiKey = "AIzaSyD6r0wuIFrbEnMT_YS8pLHotyKyJDJzmjM";
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Initialize the Google API client
+  useEffect(() => {
+    window.gapi.load("client", initClient);
+  }, []);
+
+  const initClient = () => {
+    window.gapi.client
+      .init({
+        apiKey: API_KEY,
+        clientId: CLIENT_ID,
+        discoveryDocs: [
+          "https://sheets.googleapis.com/$discovery/rest?version=v4",
+        ],
+        scope: SCOPE,
+      })
+      .then(() => {
+        setIsLoaded(true);  // Mark as loaded once the client is initialized
+      })
+      .catch((error) => {
+        console.error("Error initializing Google API client", error);
+      });
+  };
+
   const schoolNames = [
     "Greenwood High School",
     "Hill View Academy",
@@ -45,7 +72,6 @@ function App() {
     notes: "",
     files: [],
   });
-  console.log(formData)
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -134,45 +160,42 @@ function App() {
     return isValid;
   };
 
-    // Append data to Google Sheets
-    const appendToGoogleSheet = async (newRow) => {
-      const range = "Sheet1!A:F"; // Update range as per your sheet columns
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}:append?valueInputOption=RAW&key=${apiKey}`;
-  
-      const response = await fetch(url, {
-        method: "POST",
-        body: JSON.stringify({
-          values: [newRow],
-        }),
-        headers: {
-          "Content-Type": "application/json",
+  // Append data to Google Sheets
+  const appendDataToSheet = (formData) => {
+    const { schoolName, maintenanceTypes, day, month, year, cost, notes } = formData;
+
+    const values = [
+      [schoolName, maintenanceTypes.join(", "), `${day}/${month}/${year}`, cost, notes],
+    ];
+
+    window.gapi.client.sheets.spreadsheets.values
+      .append({
+        spreadsheetId: SHEET_ID,
+        range: "Sheet1!A:F",  // Ensure this range matches your Google Sheet layout
+        valueInputOption: "RAW",
+        resource: {
+          values: values,
         },
+      })
+      .then(() => {
+        alert("Data added to Google Sheets!");
+      })
+      .catch((error) => {
+        console.error("Error appending data:", error);
+        alert("Failed to add data.");
       });
-  
-      if (response.ok) {
-        alert("Your response has been successfully added to the Google Sheet!");
-      } else {
-        alert("Failed to add data to the Google Sheet.");
-      }
-    };
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     if (validateForm()) {
-      // Create the data row
-      const newRow = [
-        formData.schoolName,
-        formData.maintenanceTypes.join(", "),
-        `${formData.day}/${formData.month}/${formData.year}`,
-        formData.cost,
-        formData.notes,
-      ];
-
-     // Call function to append data to Google Sheets
-     appendToGoogleSheet(newRow);
+      if (!isLoaded) {
+        alert("Google Sheets API is still loading. Please wait.");
+        return;
+      }
+      appendDataToSheet();
       setFormData(initialFormData);
-
     }
   };
   const handleButtonClick = () => {
@@ -211,7 +234,9 @@ function App() {
               <i className="fa fa-school"></i>
             </div>
             {errors.schoolName && (
-              <span style={{ color: "red", fontSize: "11px" }}>{errors.schoolName}</span>
+              <span style={{ color: "red", fontSize: "11px" }}>
+                {errors.schoolName}
+              </span>
             )}
           </div>
 
@@ -269,9 +294,11 @@ function App() {
                 onChange={handleInputChange}
               />
             </div>
-              {errors.year && (
-                <span style={{ color: "red", fontSize: "11px" }}>{errors.year}</span>
-              )}
+            {errors.year && (
+              <span style={{ color: "red", fontSize: "11px" }}>
+                {errors.year}
+              </span>
+            )}
           </div>
         </div>
 
@@ -287,7 +314,9 @@ function App() {
             <i className="fa fa-user"></i>
           </div>
           {errors.cost && (
-            <span style={{ color: "red", fontSize: "11px" }}>{errors.cost}</span>
+            <span style={{ color: "red", fontSize: "11px" }}>
+              {errors.cost}
+            </span>
           )}
         </div>
 
@@ -303,7 +332,9 @@ function App() {
             <i className="fa fa-user"></i>
           </div>
           {errors.notes && (
-            <span style={{ color: "red", fontSize: "11px" }}>{errors.notes}</span>
+            <span style={{ color: "red", fontSize: "11px" }}>
+              {errors.notes}
+            </span>
           )}
         </div>
 
@@ -331,12 +362,12 @@ function App() {
               Select File
             </button>
           </div>
-            <div id="filePreview">
-              {formData.files.length > 0 &&
-                formData.files.map((file, index) => (
-                  <div key={index}>{file.name}</div>
-                ))}
-            </div>
+          <div id="filePreview">
+            {formData.files.length > 0 &&
+              formData.files.map((file, index) => (
+                <div key={index}>{file.name}</div>
+              ))}
+          </div>
         </div>
 
         <button type="submit" className="submit-btn">
