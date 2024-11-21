@@ -1,47 +1,53 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
-const CLIENT_ID =
-  "268057375417-n3bu2koi5v487v0a9vdat4hqh06go7l7.apps.googleusercontent.com"; // Replace with your Client ID
-const API_KEY = "AIzaSyD6r0wuIFrbEnMT_YS8pLHotyKyJDJzmjM"; // Optional, you may need it
+// const CLIENT_ID =
+//   "268057375417-n3bu2koi5v487v0a9vdat4hqh06go7l7.apps.googleusercontent.com"; // Replace with your Client ID
+// const API_KEY = "AIzaSyD6r0wuIFrbEnMT_YS8pLHotyKyJDJzmjM"; // Optional, you may need it
 const SHEET_ID = "1mQAE6mQZmgjM-lH2UaINJxExRHD-4dMgFuKSbfIKQ1A"; // Replace with your Google Sheet ID
-const SCOPE = "https://www.googleapis.com/auth/spreadsheets"; // Scope for Sheets API
+// const SCOPE = "https://www.googleapis.com/auth/spreadsheets"; // Scope for Sheets API
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authToken, setAuthToken] = useState("");
-  const [isLoaded, setIsLoaded] = useState(false);
+  // const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    window.gapi.load("client:auth2", initClient);
-  }, []);
+
 
   const initClient = () => {
     window.gapi.client
       .init({
-        apiKey: API_KEY,
-        clientId: CLIENT_ID,
+        apiKey: "AIzaSyD6r0wuIFrbEnMT_YS8pLHotyKyJDJzmjM", // Replace with your API Key
+        clientId: "268057375417-n3bu2koi5v487v0a9vdat4hqh06go7l7.apps.googleusercontent.com", // Replace with your Client ID
+        scope: "https://www.googleapis.com/auth/spreadsheets", // Define the required scope
         discoveryDocs: [
           "https://sheets.googleapis.com/$discovery/rest?version=v4",
         ],
-        scope: SCOPE,
       })
       .then(() => {
-        // Sign in automatically
-        window.gapi.auth2
-          .getAuthInstance()
-          .signIn()
-          .then((response) => {
-            setAuthToken(response.getAuthResponse().access_token);
-            setIsAuthenticated(true);
-            setIsLoaded(true);
-          })
-          .catch((error) => {
-            console.error("Error signing in", error);
-          });
+        console.log("Google API client initialized.");
+        // Handle successful initialization (e.g., sign in automatically)
+        if (window.gapi.auth2.getAuthInstance().isSignedIn.get()) {
+          const token = window.gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
+          setAuthToken(token);
+          console.log("Logged in successfully with token: ", token);
+        }
       })
       .catch((error) => {
-        console.error("Error initializing Google API client", error);
+        console.error("Error initializing Google API client: ", error);
       });
   };
+
+  const loadGapiScript = () => {
+    const script = document.createElement("script");
+    script.src = "https://apis.google.com/js/api.js";
+    script.onload = () => {
+      window.gapi.load("client:auth2", initClient);
+    };
+    document.body.appendChild(script);
+  };
+
+  useEffect(() => {
+    loadGapiScript();
+  }, []);
 
   const schoolNames = [
     "Greenwood High School",
@@ -205,10 +211,10 @@ function App() {
     e.preventDefault();
 
     if (validateForm()) {
-      if (!isLoaded || !isAuthenticated) {
+      // if (!isLoaded || !isAuthenticated) {
         alert("Google Sheets API is still loading or not authenticated. Please wait.");
-        return;
-      }
+        // return;
+      // }
       appendDataToSheet();
       setFormData(initialFormData);
     }
