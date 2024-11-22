@@ -1,10 +1,14 @@
 import { useRef, useState } from "react";
-// import { google } from "googleapis";
 import "./App.css";
 
 // const SHEET_ID = "1mQAE6mQZmgjM-lH2UaINJxExRHD-4dMgFuKSbfIKQ1A"; // Replace with your Google Sheet ID
-function App() {
+const CLIENT_ID = "268057375417-n3bu2koi5v487v0a9vdat4hqh06go7l7.apps.googleusercontent.com";
+const API_KEY = "AIzaSyD6r0wuIFrbEnMT_YS8pLHotyKyJDJzmjM";
+const SHEET_ID = "1mQAE6mQZmgjM-lH2UaINJxExRHD-4dMgFuKSbfIKQ1A"; // Replace with your Google Sheet ID
+const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 
+function App() {
+  const SHEET_NAME = "Diet + Macros"; // Replace with your sheet name
 
   const schoolNames = [
     "Greenwood High School",
@@ -135,6 +139,40 @@ function App() {
     return isValid;
   };
 
+  async function appendToGoogleSheet() {
+    const gapi = window.gapi;
+    gapi.load("client:auth2", async () => {
+      try {
+        await gapi.client.init({
+          apiKey: API_KEY,
+          clientId: CLIENT_ID,
+          discoveryDocs: [
+            "https://sheets.googleapis.com/$discovery/rest?version=v4",
+          ],
+          scope: SCOPES,
+        });
+
+        // Sign in the user
+        await gapi.auth2.getAuthInstance().signIn();
+
+        // Append data to Google Sheet
+        const response = await gapi.client.sheets.spreadsheets.values.append({
+          spreadsheetId: SHEET_ID,
+          range: `${SHEET_NAME}!A1`,
+          valueInputOption: "USER_ENTERED",
+          resource: {
+            values: [Object.values(formData)],
+          },
+        });
+        console.log("Data appended:", response);
+        alert("Data submitted successfully!");
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Failed to submit data.");
+      }
+    });
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -145,7 +183,7 @@ function App() {
       );
       // return;
       // }
-      // appendToGoogleSheet();
+      appendToGoogleSheet();
       setFormData(initialFormData);
     }
   };
